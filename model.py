@@ -1,25 +1,25 @@
-# valuation_forecast_app/model.py
 import pandas as pd
 
-def calculate_valuation(screener_data, depreciation):
+def calculate_valuation(screener_df, year, depreciation, tax_rate):
     try:
-        # Extract necessary values (examples shown below)
-        sales = float(screener_data.get("Sales", "0").replace(",", ""))
-        ebitda_margin = float(screener_data.get("EBITDA Margin", "0").replace("%", "")) / 100
-        other_income = float(screener_data.get("Other income", "0").replace(",", ""))
-        interest = float(screener_data.get("Interest", "0").replace(",", ""))
-        tax_rate = 0.25  # fixed tax assumption
+        tax_decimal = tax_rate / 100
+        if str(year) not in screener_df.index:
+            return pd.DataFrame([{"Error": f"Year {year} not available in Screener data."}])
 
-        ebitda = sales * ebitda_margin
+        row = screener_df.loc[str(year)]
+        sales = float(row.get("Sales", 0))
+        ebitda = float(row.get("Operating Profit", 0))
+        other_income = float(row.get("Other Income", 0))
+        interest = float(row.get("Interest", 0))
+
         pbt = ebitda + other_income - depreciation - interest
-        tax = pbt * tax_rate
+        tax = pbt * tax_decimal
         pat = pbt - tax
-
         cash_flow = pat + depreciation
         cfo_ebitda = (cash_flow / ebitda) if ebitda != 0 else 0
 
-        # Pack results into dataframe
-        results = pd.DataFrame([{
+        return pd.DataFrame([{
+            "Year": year,
             "Sales (₹ Cr)": round(sales, 2),
             "EBITDA (₹ Cr)": round(ebitda, 2),
             "PBT (₹ Cr)": round(pbt, 2),
@@ -28,8 +28,5 @@ def calculate_valuation(screener_data, depreciation):
             "Cash Flow (₹ Cr)": round(cash_flow, 2),
             "CFO/EBITDA": round(cfo_ebitda, 2),
         }])
-
-        return results
-
     except Exception as e:
         return pd.DataFrame([{"Error": str(e)}])
