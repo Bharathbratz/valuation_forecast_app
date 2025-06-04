@@ -1,29 +1,32 @@
-# valuation_forecast_app/screener_fetch.py
 import requests
 from bs4 import BeautifulSoup
-import re
+import pandas as pd
 
 def fetch_screener_data(stock_name):
-    url = f"https://www.screener.in/company/{stock_name.upper()}/"
+    url = f"https://www.screener.in/company/{stock_name.upper()}/consolidated/"
     try:
         response = requests.get(url, timeout=10)
         if response.status_code != 200:
             return None
 
         soup = BeautifulSoup(response.text, "html.parser")
-        data = {}
+        table = soup.find("table", {"id": "profit-loss"})
+        if not table:
+            return None
 
-        # Example Screener tags to scrape
-        stats = soup.select(".company-ratios .flex.flex-space-between")
-        for stat in stats:
-            label = stat.select_one(".name")
-            value = stat.select_one(".value")
-            if label and value:
-                data[label.text.strip()] = value.text.strip()
+        headers = [th.text.strip() for th in table.find_all("th")]
+        rows = table.find_all("tr")
+        data = []
+        for row in rows[1:]:
+            cols = row.find_all("td")
+            if len(cols) == len(headers):
+                label = cols[0].text.strip()
+                values = [col.text.strip().replace(",", "") for col in cols[1:]]
+                data.append([label] + values)
 
-        # Additional clean-up or parsing if needed
-        return data
-
+        df = pd.DataFrame(data, columns=["Metric"] + headers[1:])
+        df.set_index("Metric", inplace=True)
+        return df.T
     except Exception as e:
         print(f"Error fetching data: {e}")
         return None
