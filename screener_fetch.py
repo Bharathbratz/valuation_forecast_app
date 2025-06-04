@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 
 def fetch_screener_data(stock_name):
-    url = f"https://www.screener.in/company/{stock_name.upper()}/consolidated/"
+    url = f"https://www.screener.in/company/{stock_name.upper()}/"
     try:
         response = requests.get(url, timeout=10)
         if response.status_code != 200:
